@@ -21,7 +21,7 @@ The following workflow demonstrates the implemented **Search Properties** branch
 - Attribute filtering (city, budget, bedrooms, property type)
 - Response aggregation and delivery
 
-![Voice-Based Property Search Workflow](./assets/search-properties-workflow.png)
+![Voice-Based Property Search Workflow](./assets/01_simple_search_properties_workflow.png)
 
 
 🚧 Work in Progress — Active Development
