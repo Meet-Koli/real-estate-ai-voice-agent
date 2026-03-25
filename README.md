@@ -6,6 +6,21 @@ AI-powered real estate assistant that enables users to search properties, qualif
 
 ---
 
+## 🎥 Product Demo
+
+🚀 Real-time AI voice interaction for property search, lead capture, and booking:
+
+<p align="center">
+  <img src="demo/demo(1).gif" width="750"/>
+</p>
+
+### 📥 Full Demo (HD)
+
+- ▶️ [Watch Demo](https://drive.google.com/file/d/1HLYoi09bnUb8kbgvZxPirqebUu0AkSjo/view?usp=drive_link)  
+- ⬇️ [Download Demo (39.5 MB)](https://drive.google.com/uc?export=download&id=1HLYoi09bnUb8kbgvZxPirqebUu0AkSjo)
+
+---
+
 ## 🎯 Features
 
 - 🔊 Voice-based property search
@@ -41,6 +56,8 @@ AI-powered real estate assistant that enables users to search properties, qualif
 ---
 
 ## 🔄 Workflow Architecture
+
+```
 Voice Input
 ↓
 Vapi Assistant
@@ -54,7 +71,7 @@ Lead Capture Flow
 Booking Flow
 ↓
 Google Sheets (Leads + Bookings)
-
+```
 
 ---
 
