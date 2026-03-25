@@ -11,7 +11,7 @@ AI-powered real estate assistant that enables users to search properties, qualif
 🚀 Real-time AI voice interaction for property search, lead capture, and booking:
 
 <p align="center">
-  <img src="demo/demo(1).gif" width="750"/>
+  <img src="demo/demo (1).gif" width="750"/>
 </p>
 
 ### 📥 Full Demo (HD)
