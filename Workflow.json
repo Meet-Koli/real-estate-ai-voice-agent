@@ -1,0 +1,911 @@
+{
+  "name": "New_Real_Estate_Voice_Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        -32
+      ],
+      "id": "46fbca24-0251-477b-b7e2-4f06291360ae",
+      "name": "Webhook",
+      "webhookId": "1190e688-b323-4fe1-932c-b7a63be06e21",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "Handles inbound call from Vapi\nExpects: name, budget, intent"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4a4b7c26-5f0d-4cf9-b4eb-f91f9df94691",
+                    "leftValue": "={{ $json.tool_name }}",
+                    "rightValue": "search_properties",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "search_properties"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "485f8ca5-c8a3-40b6-a524-fedb5e94133a",
+                    "leftValue": "={{ $json.tool_name }}",
+                    "rightValue": "create_lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "681e4cae-391c-4f9c-bac6-5e4710836f87",
+                    "leftValue": "={{ $json.tool_name }}",
+                    "rightValue": "book_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "book_appointment"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "allMatchingOutputs": false
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        -32
+      ],
+      "id": "deac8c36-ebc3-46e7-9c1a-57a3d0fbaf86",
+      "name": "TOOL ROUTER",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "Routes AI tool calls to respective workflows\nHandles: search_properties, create_lead, book_appointment"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c",
+          "mode": "list",
+          "cachedResultName": "RealEstateDB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "detectAutomatically"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        -272
+      ],
+      "id": "ee70ed5a-e4b0-4aaf-b237-facb33489895",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Jrh3FdfSjT4fP9kj",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get inputs directly (from Extract Tool Data node)\nconst filters = $json;\n\n// Get all properties\nconst properties = items.map(item => item.json);\n\n// Step 1: Filter (basic)\nlet filtered = properties.filter(p => {\n\n  const locationMatch = !filters.location || \n    p.location?.toLowerCase().includes(filters.location.toLowerCase());\n\n  const budgetMatch = !filters.budget_max || \n    Number(p.price) <= Number(filters.budget_max);\n\n  return locationMatch && budgetMatch;\n});\n\n// Step 2: Score each property\nfiltered = filtered.map(p => {\n  let score = 0;\n\n  if (p.location?.toLowerCase().includes(filters.location?.toLowerCase())) score += 50;\n\n  if (filters.bedrooms && Number(p.bedrooms) === Number(filters.bedrooms)) score += 20;\n\n  if (filters.property_type && \n      p.property_type?.toLowerCase() === filters.property_type.toLowerCase()) score += 15;\n\n  if (Number(p.price) <= Number(filters.budget_max)) score += 15;\n\n  return { ...p, score };\n});\n\n// Step 3: Sort\nfiltered.sort((a, b) => b.score - a.score);\n\n// Step 4: Top 3\nfiltered = filtered.slice(0, 3);\n\n// Step 5: Fallback\nif (filtered.length === 0) {\n  return [{\n    json: {\n      message: \"I couldn’t find exact matches, but I can suggest similar options if you'd like.\"\n    }\n  }];\n}\n\n// Step 6: Return clean results\nreturn filtered.map(p => ({\n  json: {\n    location: p.location,\n    price: p.price,\n    bedrooms: p.bedrooms,\n    property_type: p.property_type,\n    score: p.score\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -272
+      ],
+      "id": "bbeb192d-f8aa-429b-b846-d5443cd4d269",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  results: [\n    {\n      toolCallId: $('Webhook').item.json.body.message.toolCalls[0].id,\n      result: JSON.stringify({\n        properties: $items().map(item => ({\n          title: `${item.json.bedrooms} BHK ${item.json.property_type} in ${item.json.location}`,\n          location: item.json.location,\n          price: item.json.price,\n          bedrooms: item.json.bedrooms,\n          property_type: item.json.property_type\n        })),\n        count: $items().length\n      })\n    }\n  ]\n}) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        944,
+        -272
+      ],
+      "id": "0f6c670b-75ef-42fe-be5c-a23088ce0a2b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const toolCall = $json.body.message.toolCalls[0];\n\n// safely extract arguments\nconst args = JSON.parse(JSON.stringify(toolCall.function.arguments));\n\nreturn [\n  {\n    json: {\n      tool_name: toolCall.function.name,\n      toolCallId: toolCall.id,\n      ...args\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        -32
+      ],
+      "id": "a1670d0e-35fc-4b9e-aceb-9dada36202f8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e0a50ef3-e189-46b9-b356-1ccee1a4d2b5",
+              "name": "name",
+              "value": "={{$json.name}}",
+              "type": "string"
+            },
+            {
+              "id": "457485c7-a3f7-446e-8d5d-8510fa3e346f",
+              "name": "phone",
+              "value": "={{$json.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "f0090540-372e-4ff4-902c-4f9d929588b7",
+              "name": "intent",
+              "value": "={{$json.intent || \"buy\"}}",
+              "type": "string"
+            },
+            {
+              "id": "336f0756-2776-4e80-9dbd-49a913434111",
+              "name": "created_at",
+              "value": "={{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "506f6d0e-977d-432a-9ee2-27006e453013",
+              "name": "location_preference",
+              "value": "={{ $json.body.message.toolCalls[0].function.arguments.location || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "d4728699-3f1e-4958-ad8a-d25c598e7575",
+              "name": "budget",
+              "value": "={{ $json.body.message.toolCalls[0].function.arguments.location || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "6699f802-4f36-4af2-9924-f7654257871c",
+              "name": "property_type",
+              "value": "={{ $json.body.message.toolCalls[0].function.arguments.property_type || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a8a2b981-4df9-40d3-8cd1-bc25171e6e93",
+              "name": "bedrooms",
+              "value": "={{ $json.body.message.toolCalls[0].function.arguments.bedrooms \n\n \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "6c3629cd-d332-410a-8c57-1be68647d716",
+              "name": "status",
+              "value": "={{ \"new\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -16
+      ],
+      "id": "eb3f5ce6-62e0-4459-815d-bce883fb51da",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      ...$json,\n      phone: $json.phone.replace(/\\D/g, '')\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -16
+      ],
+      "id": "83c535f8-ed63-4c5a-bdc6-261bf0700d09",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7efb4ce-7bb1-4bd3-b7f5-be026ede1d94",
+              "leftValue": "={{$json.phone.length}}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        -16
+      ],
+      "id": "143d6975-c960-41de-b5a4-747207a9f08d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{{ JSON.stringify({\n  results: [\n    {\n      toolCallId: $('Webhook').item.json.body.message.toolCalls[0].id,\n      result: JSON.stringify({\n        success: false,\n        message: \"The phone number seems invalid. Please provide a valid 10-digit number.\"\n      })\n    }\n  ]\n}) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1168,
+        80
+      ],
+      "id": "eccbae83-c936-4b34-a27b-43b686c09c4d",
+      "name": "Respond to Webhook1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c",
+          "mode": "list",
+          "cachedResultName": "RealEstateDB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 102931844,
+          "mode": "list",
+          "cachedResultName": "leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit#gid=102931844"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        -96
+      ],
+      "id": "b2e48580-1768-4907-9814-a5ecf42447af",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Jrh3FdfSjT4fP9kj",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  results: [\n    {\n      toolCallId: $('Webhook').item.json.body.message.toolCalls[0].id,\n      result: JSON.stringify({\n        success: true,\n        message: \"Lead saved successfully\"\n      })\n    }\n  ]\n}) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1360,
+        -96
+      ],
+      "id": "88b43dfa-ebbe-4be4-9816-c3969ea2dbbb",
+      "name": "Respond to Webhook2",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ad4c5f6e-2007-4803-983d-1d80c3e79aaf",
+              "name": "date_raw",
+              "value": "={{$json.date}}",
+              "type": "string"
+            },
+            {
+              "id": "49f5d7a3-15da-4363-b74c-de7ad5f1788c",
+              "name": "time_raw",
+              "value": "={{$json.time}}",
+              "type": "string"
+            },
+            {
+              "id": "53247c4a-295f-4541-b8d5-9cd685a29526",
+              "name": "property_summary",
+              "value": "={{$json.property_title}}",
+              "type": "string"
+            },
+            {
+              "id": "53efd49a-13ae-4478-900a-3396686d62fa",
+              "name": "location",
+              "value": "={{$json.location}}",
+              "type": "string"
+            },
+            {
+              "id": "c5adc7d8-8736-4717-aeb8-24c0afa39a95",
+              "name": "created_at",
+              "value": "={{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "e69eb0a9-001e-4b74-8af7-f2f6013b2bc3",
+              "name": "status",
+              "value": "={{  \"scheduled\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        288
+      ],
+      "id": "f8c1f255-3155-42af-ada0-9efdc1640847",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  results: [\n    {\n      toolCallId: $('Webhook').item.json.body.message.toolCalls[0].id,\n      result: JSON.stringify({\n        success: true,\n        message: \"Your site visit has been scheduled successfully\"\n      })\n    }\n  ]\n}) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1600,
+        288
+      ],
+      "id": "ca22e51a-0c2a-442c-be14-5bd336f3e247",
+      "name": "Respond to Webhook3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c",
+          "mode": "list",
+          "cachedResultName": "RealEstateDB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 115757451,
+          "mode": "list",
+          "cachedResultName": "bookings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-05pjj12Eqw0tLnVHKT_svbyjhKsXs6k37xj0X3kJ2c/edit#gid=115757451"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "property_title",
+              "displayName": "property_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1392,
+        288
+      ],
+      "id": "453ec21d-791c-4d8b-ac05-77fdca3dc4e2",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Jrh3FdfSjT4fP9kj",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawDate = ($json.date || \"\").toLowerCase();\nconst rawTime = ($json.time || \"\").toLowerCase();\n\nconst now = new Date();\nlet parsedDate = new Date();\n\n// --- DAY PARSING ---\n\nconst days = {\n  sunday: 0,\n  monday: 1,\n  tuesday: 2,\n  wednesday: 3,\n  thursday: 4,\n  friday: 5,\n  saturday: 6\n};\n\nif (rawDate.includes(\"tomorrow\")) {\n  parsedDate.setDate(now.getDate() + 1);\n}\nelse if (rawDate.includes(\"today\")) {\n  parsedDate = now;\n}\nelse if (rawDate.includes(\"next\")) {\n  const dayName = Object.keys(days).find(d => rawDate.includes(d));\n  if (dayName) {\n    const targetDay = days[dayName];\n    const currentDay = now.getDay();\n    let diff = targetDay - currentDay;\n\n    if (diff <= 0) diff += 7;\n    diff += 7; // next week\n\n    parsedDate.setDate(now.getDate() + diff);\n  }\n}\nelse {\n  // fallback\n  const tryDate = new Date(rawDate);\n  if (!isNaN(tryDate)) parsedDate = tryDate;\n}\n\n// --- TIME PARSING ---\n\nlet parsedTime = \"12:00\"; // default\n\nif (rawTime.includes(\"morning\")) parsedTime = \"10:00\";\nelse if (rawTime.includes(\"afternoon\")) parsedTime = \"14:00\";\nelse if (rawTime.includes(\"evening\")) parsedTime = \"18:00\";\nelse if (rawTime.includes(\"night\")) parsedTime = \"20:00\";\nelse {\n  // handle \"5 pm\", \"12 pm\"\n  const match = rawTime.match(/(\\d+)(:\\d+)?\\s*(am|pm)/);\n  if (match) {\n    let hour = parseInt(match[1]);\n    const isPM = match[3] === \"pm\";\n\n    if (isPM && hour !== 12) hour += 12;\n    if (!isPM && hour === 12) hour = 0;\n\n    parsedTime = `${hour.toString().padStart(2, '0')}:00`;\n  }\n}\n\n// --- FINAL FORMAT ---\n\nconst formattedDate = parsedDate.toISOString().split('T')[0];\n\nreturn [\n  {\n    json: {\n      ...$json,\n      date_parsed: formattedDate,\n      time_parsed: parsedTime,\n      date_raw: $json.date,\n      time_raw: $json.time\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        288
+      ],
+      "id": "20dade4d-4f71-4c50-be4c-fd074189a224",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst bookingDateTime = new Date(`${$json.date_parsed}T${$json.time_parsed}`);\n\nif (bookingDateTime < now) {\n  return [\n    {\n      json: {\n        ...$json,\n        valid: false,\n        error: \"Selected time is in the past\"\n      }\n    }\n  ];\n}\n\nreturn [\n  {\n    json: {\n      ...$json,\n      valid: true\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        288
+      ],
+      "id": "d9994229-702a-4faf-8276-97739039633e",
+      "name": "Slot Validation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "907b41f4-fdcb-4741-be39-bc4252b32460",
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        288
+      ],
+      "id": "a69131ec-e038-4f9d-82b9-a51802df46eb",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{{ JSON.stringify({\n  results: [\n    {\n      toolCallId: $('Webhook').first().json.body.message.toolCalls[0].id,\n      result: JSON.stringify({\n        success: false,\n        message: \"That time seems unavailable. Could you choose another time?\"\n      })\n    }\n  ]\n}) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1376,
+        432
+      ],
+      "id": "0383a337-07f6-4d94-ad77-35df995bbc2a",
+      "name": "Respond to Webhook4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TOOL ROUTER": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "TOOL ROUTER",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Slot Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot Validation": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "415fbe67-f5ef-48f1-b61e-4d622e0e5d88",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "415553cb15e79f24df181002311d9a2f59c255ddc35f4647ffeefa3669c6ec34"
+  },
+  "id": "A7YKjQnfY1FIr32u",
+  "tags": []
+}
